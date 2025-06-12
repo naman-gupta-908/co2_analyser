@@ -1,2 +1,4 @@
 .idea
 co2-emissions-ui.tar.gz
+co2_report_unknown.json
+co2_estimator/__pycache__/

@@ -2,7 +2,7 @@ import os
 import json
 from co2_estimator import (
     sagemaker_metadata, carbon_intensity, static_estimator,
-    dynamic_monitor, model_parser, s3_uploader, dynamo_uploader, report_generator
+    dynamic_monitor, model_parser, dynamo_uploader, report_generator
 )
 
 def main():
@@ -44,7 +44,6 @@ def main():
     with open(json_file, "w") as f:
         json.dump(report, f, indent=4)
 
-    s3_uploader.upload_to_s3(json_file, s3_bucket, json_file)
     dynamo_uploader.upload_to_dynamodb(report, dynamo_table)
     print("✅ Report uploaded to S3 and DynamoDB")
 
