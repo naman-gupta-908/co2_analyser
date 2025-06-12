@@ -1,41 +1,83 @@
-import psutil
-import numpy as np
 import time
+import psutil
+import pynvml
+import torchvision.models as models
+import torch
 
-try:
-    import pynvml
-    pynvml.nvmlInit()
-    GPU_ENABLED = True
-except:
-    GPU_ENABLED = False
+def monitor(duration_sec):
+    """
+    Monitor CPU and GPU power usage while running model_callable on sample_input.
 
-def monitor(duration_sec=10, model_callable=None, sample_input=None):
-    cpu_power_list, gpu_power_list = [], []
-    CPU_WATT_PER_CORE = 10
-    GPU_WATT_ESTIMATE = 150
+    Returns:
+        avg_power_kw: average power consumption in kW
+        runtime_hr: total runtime in hours
+    """
+
+    # ---------- LOAD MODEL (ResNet18 pretrained) ----------
+    print("Loading pretrained ResNet18...")
+
+    model = models.resnet18(pretrained=True)
+    model.eval()
+
+    # ---------- CREATE SAMPLE INPUT ----------
+    # ResNet expects (batch_size, channels, height, width): (1, 3, 224, 224)
+    sample_input = torch.randn(1, 3, 224, 224)
+
+    # Create model_callable wrapper
+    def model_callable(model_input):
+        with torch.no_grad():
+            return model(model_input)
+
+
+    # Try initializing GPU monitoring
+    gpu_monitoring_enabled = False
+    try:
+        pynvml.nvmlInit()
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        gpu_monitoring_enabled = True
+    except Exception as e:
+        print(f"[INFO] GPU monitoring not available: {e}")
+
+    cpu_power_watts = []
+    gpu_power_watts = []
 
     start_time = time.time()
 
-    while time.time() - start_time < duration_sec:
-        cpu_percent = psutil.cpu_percent(interval=0.5)
-        cpu_power = (cpu_percent / 100) * psutil.cpu_count() * CPU_WATT_PER_CORE
-        cpu_power_list.append(cpu_power)
+    # Continuous monitoring loop
+    while (time.time() - start_time) < duration_sec:
+        cpu_usage = psutil.cpu_percent(interval=0.1)
+        cpu_power = cpu_usage * 0.5  # Rough estimation: 0.5W per 1% usage (tweak as per your hardware)
+        cpu_power_watts.append(cpu_power)
 
-        gpu_power = 0
-        if GPU_ENABLED:
-            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-            gpu_power = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000
-        else:
-            gpu_power = GPU_WATT_ESTIMATE
+        if gpu_monitoring_enabled:
+            try:
+                power_draw = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000  # milliwatts to watts
+                gpu_power_watts.append(power_draw)
+            except Exception as e:
+                print(f"[WARNING] Could not read GPU power: {e}")
+                gpu_power_watts.append(0)
 
-        gpu_power_list.append(gpu_power)
+        # Actually run model inside loop to simulate realistic inference
+        _ = model_callable(sample_input)
 
-        if model_callable and sample_input:
-            _ = model_callable(sample_input)
+    end_time = time.time()
 
-    avg_cpu = np.mean(cpu_power_list)
-    avg_gpu = np.mean(gpu_power_list)
-    total_power_kw = (avg_cpu + avg_gpu) / 1000
-    runtime_hr = duration_sec / 3600
+    # Average power calculations
+    avg_cpu_power = sum(cpu_power_watts) / len(cpu_power_watts) if cpu_power_watts else 0
+    avg_gpu_power = sum(gpu_power_watts) / len(gpu_power_watts) if gpu_power_watts else 0
+    total_power_watts = avg_cpu_power + avg_gpu_power
 
-    return total_power_kw, runtime_hr
+    runtime_sec = end_time - start_time
+    runtime_hr = runtime_sec / 3600
+    power_kw = total_power_watts / 1000
+
+    print(f"Avg CPU Power: {avg_cpu_power:.2f} W")
+    print(f"Avg GPU Power: {avg_gpu_power:.2f} W")
+    print(f"Total Avg Power: {total_power_watts:.2f} W")
+    print(f"Runtime: {runtime_sec:.2f} sec")
+
+    # Clean up GPU
+    if gpu_monitoring_enabled:
+        pynvml.nvmlShutdown()
+
+    return power_kw, runtime_hr
