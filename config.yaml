@@ -1,0 +1,8 @@
+default_region: ap-south-1
+carbon_intensity:
+  ap-south-1: 0.708
+  us-east-1: 0.3
+  us-west-2: 0.2
+  eu-west-1: 0.1
+s3_bucket: your-s3-bucket-name
+dynamodb_table: your-dynamodb-table-name
