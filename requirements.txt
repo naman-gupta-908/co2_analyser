@@ -6,3 +6,5 @@ PyYAML
 sagemaker
 torch
 torchvision
+scikit-learn
+nltk

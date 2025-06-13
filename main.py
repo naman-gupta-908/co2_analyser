@@ -25,7 +25,7 @@ def main():
     static_emissions = static_estimator.estimate_static_emission(instance_type, runtime, power_map, carbon_factor)
     params = model_parser.get_model_params(model_path, framework)
 
-    dynamic_power_kw, dynamic_runtime_hr = dynamic_monitor.monitor(duration_sec=10)
+    dynamic_power_kw, dynamic_runtime_hr = dynamic_monitor.monitor(duration_sec=30)
     dynamic_emissions = dynamic_power_kw * dynamic_runtime_hr * carbon_factor
 
     report = report_generator.generate_report(
@@ -40,11 +40,14 @@ def main():
         params=params
     )
 
-    json_file = f"co2_report_{region}.json"
+    # Print key-value pairs line by line
+    for key, value in report.items():
+        print(f"{key}: {value}")
+    json_file = f"co2_report.json"
     with open(json_file, "w") as f:
         json.dump(report, f, indent=4)
 
-    dynamo_uploader.upload_to_dynamodb(report, dynamo_table)
+    # dynamo_uploader.upload_to_dynamodb(report, dynamo_table)
     print("✅ Report uploaded to S3 and DynamoDB")
 
 if __name__ == "__main__":

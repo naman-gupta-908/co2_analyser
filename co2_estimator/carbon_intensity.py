@@ -1,7 +1,7 @@
 import yaml
 
 def load_config():
-    with open("config.yaml", 'r') as f:
+    with open("/opt/ml/processing/config.yaml", 'r') as f:
         return yaml.safe_load(f)
 
 def get_carbon_intensity(region):

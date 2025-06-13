@@ -3,8 +3,10 @@ import psutil
 import pynvml
 import torchvision.models as models
 import torch
+import subprocess
 
-def monitor(duration_sec):
+
+def monitor(file_name, duration_sec):
     """
     Monitor CPU and GPU power usage while running model_callable on sample_input.
 
@@ -13,20 +15,20 @@ def monitor(duration_sec):
         runtime_hr: total runtime in hours
     """
 
-    # ---------- LOAD MODEL (ResNet18 pretrained) ----------
-    print("Loading pretrained ResNet18...")
-
-    model = models.resnet18(pretrained=True)
-    model.eval()
-
-    # ---------- CREATE SAMPLE INPUT ----------
-    # ResNet expects (batch_size, channels, height, width): (1, 3, 224, 224)
-    sample_input = torch.randn(1, 3, 224, 224)
-
-    # Create model_callable wrapper
-    def model_callable(model_input):
-        with torch.no_grad():
-            return model(model_input)
+    # # ---------- LOAD MODEL (ResNet18 pretrained) ----------
+    # print("Loading pretrained ResNet18...")
+    #
+    # model = models.googlenet(weights=models.GoogLeNet_Weights.IMAGENET1K_V1)
+    # model.eval()
+    #
+    # # ---------- CREATE SAMPLE INPUT ----------
+    # # ResNet expects (batch_size, channels, height, width): (1, 3, 224, 224)
+    # sample_input = torch.randn(1, 3, 224, 224)
+    #
+    # # Create model_callable wrapper
+    # def model_callable(model_input):
+    #     with torch.no_grad():
+    #         return model(model_input)
 
 
     # Try initializing GPU monitoring
@@ -58,7 +60,13 @@ def monitor(duration_sec):
                 gpu_power_watts.append(0)
 
         # Actually run model inside loop to simulate realistic inference
-        _ = model_callable(sample_input)
+        # _ = model_callable(sample_input)
+        # Run the sentiment_train.py script (replace with actual filename)
+        process = subprocess.Popen(["python3", "/opt/ml/processing/co2_estimator/" + file_name])
+
+        # Wait until the subprocess is done
+        process.wait()
+
 
     end_time = time.time()
 
